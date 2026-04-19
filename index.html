@@ -2,174 +2,149 @@
 <html lang="es">
 <head>
   <meta charset="utf-8">
-  <title>SGX Spatial Scanner (Live PoC)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>SGX | Cubemap Spatial Scanner</title>
   <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
   <style>
-    body { margin: 0; background: #000; font-family: 'Courier New', Courier, monospace; overflow: hidden; }
+    body { margin: 0; padding: 0; background-color: #000; font-family: 'Courier New', Courier, monospace; overflow: hidden; }
     
-    /* SGX UI Branding */
-    #ui-layer { position: fixed; bottom: 20px; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 10px; z-index: 9999; }
-    
-    .sgx-btn { 
-      background: rgba(50, 82, 123, 0.9); border: 1px solid #FDCC0D; color: #FDCC0D; 
-      padding: 12px 24px; font-size: 14px; font-weight: bold; border-radius: 4px; 
-      text-transform: uppercase; cursor: pointer; letter-spacing: 1px; backdrop-filter: blur(5px);
-    }
-    .sgx-btn:active { background: #FDCC0D; color: #000; }
-    
-    /* El truco contra Safari: No lo ocultamos, lo usamos de UI (Viewfinder) */
-    #viewfinder {
-      position: fixed; top: 20px; right: 20px; width: 120px; height: 160px;
-      border: 2px solid #FDCC0D; border-radius: 8px; object-fit: cover;
-      z-index: 9999; display: none; background: #000; box-shadow: 0 0 15px rgba(253, 204, 13, 0.3);
+    /* UI SGX - Panel de Control Flotante */
+    #dashboard {
+      position: absolute;
+      top: 20px; left: 50%; transform: translateX(-50%);
+      background: rgba(50, 82, 123, 0.9); /* Azul SGX */
+      border: 1px solid #FDCC0D; /* Amarillo SGX */
+      padding: 15px; border-radius: 8px; z-index: 1000;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+      backdrop-filter: blur(10px);
+      width: 90%; max-width: 400px;
     }
 
-    #crosshair {
-      position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-      width: 20px; height: 20px; border: 2px solid rgba(253, 204, 13, 0.5); border-radius: 50%;
-      z-index: 999; pointer-events: none;
+    .sgx-title { grid-column: span 2; color: #FDCC0D; text-align: center; margin: 0; font-size: 14px; text-transform: uppercase; letter-spacing: 2px;}
+    .sgx-subtitle { grid-column: span 2; color: #FFF; text-align: center; margin: 0 0 10px 0; font-size: 10px; }
+
+    /* Botones de Captura (Invocan la cámara nativa del iPhone directo) */
+    .face-btn {
+      position: relative; overflow: hidden;
+      background: #000; border: 1px solid #FDCC0D; color: #FDCC0D;
+      padding: 10px; text-align: center; font-weight: bold; font-size: 12px;
+      border-radius: 4px; cursor: pointer; text-transform: uppercase;
+    }
+    .face-btn input[type="file"] {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      opacity: 0; cursor: pointer;
+    }
+    .face-btn.loaded { background: #FDCC0D; color: #000; }
+
+    /* Botón para ocultar UI y ver el resultado */
+    #toggle-ui {
+      grid-column: span 2; background: transparent; border: 1px dashed #FDCC0D;
+      color: #FFF; padding: 8px; text-align: center; border-radius: 4px; cursor: pointer;
     }
   </style>
 </head>
 <body>
 
-  <!-- 
-    EL FIX VITAL: 'muted' y 'playsinline' obligatorios para iOS. 
-    Y no usamos display:none, lo usamos como visor flotante.
-  -->
-  <video id="viewfinder" autoplay playsinline muted></video>
-
-  <!-- El Lienzo Equirectangular -->
-  <canvas id="texture-canvas" width="2048" height="1024" style="display:none;"></canvas>
-
-  <div id="crosshair"></div>
-
-  <div id="ui-layer">
-    <button id="start-btn" class="sgx-btn">1. Activar Ojo Métrico</button>
-    <button id="save-btn" class="sgx-btn" style="display:none;">2. Extraer Asset 360</button>
+  <!-- Dashboard de Captura Modular -->
+  <div id="dashboard">
+    <h1 class="sgx-title">SGX Skybox Scanner</h1>
+    <p class="sgx-subtitle">Toma 4 fotos rotando 90° con tu lente Ultrawide (0.5x)</p>
+    
+    <div class="face-btn" id="btn-front">
+      Norte (Frente)
+      <!-- El atributo 'capture="environment"' abre la cámara directamente en iOS sin pasar por la galería -->
+      <input type="file" accept="image/*" capture="environment" data-target="#plane-front" data-btn="#btn-front">
+    </div>
+    <div class="face-btn" id="btn-right">
+      Este (Derecha)
+      <input type="file" accept="image/*" capture="environment" data-target="#plane-right" data-btn="#btn-right">
+    </div>
+    <div class="face-btn" id="btn-back">
+      Sur (Atrás)
+      <input type="file" accept="image/*" capture="environment" data-target="#plane-back" data-btn="#btn-back">
+    </div>
+    <div class="face-btn" id="btn-left">
+      Oeste (Izquierda)
+      <input type="file" accept="image/*" capture="environment" data-target="#plane-left" data-btn="#btn-left">
+    </div>
+    
+    <div id="toggle-ui" onclick="document.getElementById('dashboard').style.display='none'">[ Ocultar UI (Doble tap en pantalla para volver) ]</div>
   </div>
 
+  <!-- Motor WebXR (El Cuarto Digital) -->
   <a-scene xr-mode-ui="enabled: false">
-    <a-assets>
-      <canvas id="live-texture"></canvas>
-    </a-assets>
+    
+    <!-- Centro de la cámara -->
+    <a-camera position="0 0 0" look-controls="reverseMouseDrag: true"></a-camera>
 
-    <!-- Esfera Base. Arranca gris oscura para saber dónde no has pintado -->
-    <a-sky id="environment" color="#222" material="shader: flat; side: back"></a-sky>
+    <!-- 
+      Arquitectura del Cubo:
+      Dimensiones masivas (100x100) para evitar que la cámara las atraviese.
+      Material "side: back" para que la textura se vea desde adentro hacia afuera.
+    -->
+    <a-entity id="skybox" position="0 0 0">
+      <!-- Norte -->
+      <a-plane id="plane-front" position="0 0 -50" width="100" height="100" material="shader: flat; side: back; color: #111"></a-plane>
+      <!-- Sur -->
+      <a-plane id="plane-back" position="0 0 50" rotation="0 180 0" width="100" height="100" material="shader: flat; side: back; color: #111"></a-plane>
+      <!-- Este -->
+      <a-plane id="plane-right" position="50 0 0" rotation="0 -90 0" width="100" height="100" material="shader: flat; side: back; color: #111"></a-plane>
+      <!-- Oeste -->
+      <a-plane id="plane-left" position="-50 0 0" rotation="0 90 0" width="100" height="100" material="shader: flat; side: back; color: #111"></a-plane>
+      
+      <!-- Techo y Piso (Opcionales, oscuros por defecto para dar profundidad) -->
+      <a-plane position="0 50 0" rotation="-90 0 0" width="100" height="100" material="shader: flat; side: back; color: #050505"></a-plane>
+      <a-plane position="0 -50 0" rotation="90 0 0" width="100" height="100" material="shader: flat; side: back; color: #050505"></a-plane>
+    </a-entity>
 
-    <a-camera id="player-cam" position="0 0 0" look-controls="pointerLockEnabled: false"></a-camera>
   </a-scene>
 
+  <!-- Lógica de Inyección de Píxeles -->
   <script>
-    const video = document.getElementById('viewfinder');
-    const canvas = document.getElementById('texture-canvas');
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    
-    const startBtn = document.getElementById('start-btn');
-    const saveBtn = document.getElementById('save-btn');
-    const sky = document.getElementById('environment');
-    const cameraEl = document.getElementById('player-cam');
+    // Mostrar UI de nuevo con doble tap en la pantalla
+    document.body.addEventListener('dblclick', () => {
+      document.getElementById('dashboard').style.display = 'grid';
+    });
 
-    let isScanning = false;
+    // Procesar las fotos instantáneamente desde la RAM del celular
+    document.querySelectorAll('input[type="file"]').forEach(input => {
+      input.addEventListener('change', function(event) {
+        const file = event.target.files[0];
+        if (file) {
+          const targetPlaneId = this.getAttribute('data-target');
+          const btnId = this.getAttribute('data-btn');
+          const plane = document.querySelector(targetPlaneId);
+          const btn = document.querySelector(btnId);
 
-    // Pintar el fondo del canvas de negro al inicio para evitar transparencias rotas en WebGL
-    ctx.fillStyle = "black";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    async function initCamera() {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { exact: "environment" } }
-        });
-        video.srcObject = stream;
-        
-        // Promesa para asegurar que el video arranca antes de pintar
-        await new Promise(resolve => {
-          video.onloadedmetadata = () => {
-            video.play();
-            resolve();
-          };
-        });
-        
-        video.style.display = 'block'; // Mostramos el visor
-      } catch (err) {
-        // Fallback a cualquier cámara trasera si el ultrawide estricto falla
-        try {
-          const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }});
-          video.srcObject = stream;
-          await video.play();
-          video.style.display = 'block';
-        } catch (fallbackErr) {
-          alert("Error de cámara: Asegúrate de estar en HTTPS y dar permisos.");
+          // Crear URL local sin subir al servidor
+          const objectURL = URL.createObjectURL(file);
+          
+          // Inyectar textura WebGL en la pared correspondiente
+          plane.setAttribute('material', `src: ${objectURL}; shader: flat; color: #FFF; side: back`);
+          
+          // Cambiar estado de la UI (Feedback visual)
+          btn.classList.add('loaded');
+          btn.innerHTML = '✅ Cargado <input type="file" accept="image/*" capture="environment" data-target="'+targetPlaneId+'" data-btn="'+btnId+'">';
+          
+          // Re-vincular el listener al nuevo input (para permitir sobrescribir)
+          bindInput(btn.querySelector('input'));
         }
-      }
+      });
+    });
+
+    function bindInput(input) {
+       input.addEventListener('change', function(event) {
+          // Lógica idéntica arriba para reemplazos.
+          const file = event.target.files[0];
+          if(file) {
+             const targetPlaneId = this.getAttribute('data-target');
+             const plane = document.querySelector(targetPlaneId);
+             const objectURL = URL.createObjectURL(file);
+             plane.setAttribute('material', `src: ${objectURL}; shader: flat; color: #FFF; side: back`);
+          }
+       });
     }
-
-    startBtn.addEventListener('click', async () => {
-      if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-        const permission = await DeviceOrientationEvent.requestPermission();
-        if (permission !== 'granted') {
-          alert('Necesitamos el giroscopio para pintar el espacio.');
-          return;
-        }
-      }
-      
-      startBtn.innerText = "Inicializando...";
-      await initCamera();
-      
-      sky.setAttribute('material', `src: #texture-canvas; shader: flat`);
-      
-      isScanning = true;
-      startBtn.style.display = 'none';
-      saveBtn.style.display = 'block';
-    });
-
-    // Guardar el mapa al teléfono
-    saveBtn.addEventListener('click', () => {
-      const dataURL = canvas.toDataURL('image/jpeg', 0.9);
-      const link = document.createElement('a');
-      link.download = `SGX_Scan_${new Date().getTime()}.jpg`;
-      link.href = dataURL;
-      link.click();
-    });
-
-    // El Motor de Pintura en Vivo
-    AFRAME.registerComponent('spatial-painter', {
-      tick: function () {
-        if (!isScanning || video.readyState !== video.HAVE_ENOUGH_DATA) return;
-
-        const rotation = cameraEl.getAttribute('rotation');
-        
-        // Mapeo Equirectangular básico
-        let yaw = (rotation.y % 360 + 360) % 360; 
-        let mapX = (yaw / 360) * canvas.width;
-
-        let pitch = Math.max(-90, Math.min(90, rotation.x));
-        let mapY = ((pitch + 90) / 180) * canvas.height;
-
-        // Tamaño del pincel (frame de la cámara). Lo hacemos más pequeño cerca de los polos para mitigar distorsión extrema.
-        let distortionFactor = Math.cos(pitch * Math.PI / 180);
-        
-        // Ajustamos la escala del 'sello' para que cubra bien.
-        const stampWidth = 400; 
-        const stampHeight = 300 * Math.max(0.3, distortionFactor); // Se comprime en los polos
-
-        const drawX = canvas.width - mapX - (stampWidth / 2); 
-        const drawY = mapY - (stampHeight / 2);
-
-        // Estampar
-        ctx.drawImage(video, drawX, drawY, stampWidth, stampHeight);
-
-        // Actualizar Textura WebGL
-        const material = sky.getObject3D('mesh').material;
-        if (material && material.map) {
-          material.map.needsUpdate = true;
-        }
-      }
-    });
-
-    document.querySelector('a-scene').setAttribute('spatial-painter', '');
   </script>
 </body>
 </html>
+
