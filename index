@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>SGX Tier 1: Live Spatial Scanner</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+  <style>
+    body { margin: 0; background: #000; font-family: 'Courier New', Courier, monospace; overflow: hidden; }
+    /* UI SGX Core */
+    #ui { position: fixed; bottom: 30px; width: 100%; text-align: center; z-index: 999; }
+    button { 
+      background: #32527B; border: 2px solid #FDCC0D; color: #FDCC0D; 
+      padding: 15px 40px; font-size: 16px; font-weight: bold; border-radius: 4px; 
+      text-transform: uppercase; cursor: pointer; letter-spacing: 2px;
+    }
+    button:active { background: #FDCC0D; color: #000; }
+    #video-feed { display: none; } /* Ocultamos el video puro, solo queremos la data */
+  </style>
+</head>
+<body>
+
+  <video id="video-feed" autoplay playsinline></video>
+
+  <canvas id="texture-canvas" width="4096" height="2048" style="display:none;"></canvas>
+
+  <div id="ui">
+    <button id="start-btn">Activar Sensor Espacial</button>
+  </div>
+
+  <a-scene xr-mode-ui="enabled: false">
+    <a-assets>
+      <canvas id="live-texture"></canvas>
+    </a-assets>
+
+    <a-sky id="environment" color="#111" material="shader: flat; side: back"></a-sky>
+
+    <a-camera id="player-cam" position="0 0 0" look-controls="pointerLockEnabled: false"></a-camera>
+  </a-scene>
+
+  <script>
+    // --- ARQUITECTURA DEL MOTOR TIER 1 ---
+
+    const video = document.getElementById('video-feed');
+    const canvas = document.getElementById('texture-canvas');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    const startBtn = document.getElementById('start-btn');
+    const sky = document.getElementById('environment');
+    const cameraEl = document.getElementById('player-cam');
+
+    let isScanning = false;
+
+    // 1. Iniciar Flujo Óptico (Cámara Ultrawide si es posible)
+    async function initCamera() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { exact: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } }
+        });
+        video.srcObject = stream;
+        video.play();
+      } catch (err) {
+        // Fallback si falla el ultrawide
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }});
+        video.srcObject = stream;
+        video.play();
+      }
+    }
+
+    // 2. Lógica del Botón: Permisos de iOS y Arranque
+    startBtn.addEventListener('click', async () => {
+      // iOS requiere interacción del usuario para activar sensores
+      if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+        const permission = await DeviceOrientationEvent.requestPermission();
+        if (permission !== 'granted') {
+          alert('Se requiere acceso al giroscopio para mapear el espacio.');
+          return;
+        }
+      }
+      
+      await initCamera();
+      
+      // Conectar el Canvas como la textura de la esfera en vivo
+      sky.setAttribute('material', `src: #texture-canvas; shader: flat`);
+      
+      isScanning = true;
+      startBtn.style.display = 'none'; // Limpiamos la UI para el creador
+    });
+
+    // 3. El Pincel Espacial (Render Loop)
+    // Usamos el motor interno de A-Frame (Three.js) para sincronizar frames
+    AFRAME.registerComponent('spatial-painter', {
+      tick: function () {
+        if (!isScanning || video.readyState !== video.HAVE_ENOUGH_DATA) return;
+
+        // Extraer rotación de la cámara (Tu "Ojo Métrico")
+        const rotation = cameraEl.getAttribute('rotation');
+        
+        // Matemáticas de Proyección Equirectangular
+        // Convertimos Pitch (-90 a 90) y Yaw (0 a 360) a Coordenadas UV del Canvas (4096x2048)
+        
+        // YAW: El eje horizontal (Giro 360)
+        // Normalizamos el ángulo de -180/180 o infinito a 0-360
+        let yaw = (rotation.y % 360 + 360) % 360; 
+        let mapX = (yaw / 360) * canvas.width;
+
+        // PITCH: El eje vertical (Arriba/Abajo)
+        // A-Frame pitch es usualmente -90 (arriba) a 90 (abajo)
+        let pitch = Math.max(-90, Math.min(90, rotation.x));
+        let mapY = ((pitch + 90) / 180) * canvas.height;
+
+        // Dimensiones del "sello" o pincelada (basado en el FOV del lente)
+        // Ajusta estos valores si ves que la pintura se ve muy pequeña o muy grande
+        const stampWidth = canvas.width * (video.videoWidth / 4000); 
+        const stampHeight = canvas.height * (video.videoHeight / 2000);
+
+        // Centrar el sello en la coordenada
+        const drawX = canvas.width - mapX - (stampWidth / 2); // Invertido para proyección interna
+        const drawY = mapY - (stampHeight / 2);
+
+        // PINTAR EL FRAME EN LA MEMORIA RAM
+        // Nota: ctx.globalCompositeOperation = 'lighter' o 'source-over' controla cómo se mezclan los bordes
+        ctx.drawImage(video, drawX, drawY, stampWidth, stampHeight);
+
+        // Actualizar la textura WebGL en el GPU
+        const material = sky.getObject3D('mesh').material;
+        if (material.map) {
+          material.map.needsUpdate = true;
+        }
+      }
+    });
+
+    // Inyectar el componente al motor
+    document.querySelector('a-scene').setAttribute('spatial-painter', '');
+
+  </script>
+</body>
+</html>
