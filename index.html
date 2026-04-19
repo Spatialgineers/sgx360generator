@@ -2,30 +2,52 @@
 <html lang="es">
 <head>
   <meta charset="utf-8">
-  <title>SGX Tier 1: Live Spatial Scanner</title>
+  <title>SGX Spatial Scanner (Live PoC)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
   <style>
     body { margin: 0; background: #000; font-family: 'Courier New', Courier, monospace; overflow: hidden; }
-    /* UI SGX Core */
-    #ui { position: fixed; bottom: 30px; width: 100%; text-align: center; z-index: 999; }
-    button { 
-      background: #32527B; border: 2px solid #FDCC0D; color: #FDCC0D; 
-      padding: 15px 40px; font-size: 16px; font-weight: bold; border-radius: 4px; 
-      text-transform: uppercase; cursor: pointer; letter-spacing: 2px;
+    
+    /* SGX UI Branding */
+    #ui-layer { position: fixed; bottom: 20px; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 10px; z-index: 9999; }
+    
+    .sgx-btn { 
+      background: rgba(50, 82, 123, 0.9); border: 1px solid #FDCC0D; color: #FDCC0D; 
+      padding: 12px 24px; font-size: 14px; font-weight: bold; border-radius: 4px; 
+      text-transform: uppercase; cursor: pointer; letter-spacing: 1px; backdrop-filter: blur(5px);
     }
-    button:active { background: #FDCC0D; color: #000; }
-    #video-feed { display: none; } /* Ocultamos el video puro, solo queremos la data */
+    .sgx-btn:active { background: #FDCC0D; color: #000; }
+    
+    /* El truco contra Safari: No lo ocultamos, lo usamos de UI (Viewfinder) */
+    #viewfinder {
+      position: fixed; top: 20px; right: 20px; width: 120px; height: 160px;
+      border: 2px solid #FDCC0D; border-radius: 8px; object-fit: cover;
+      z-index: 9999; display: none; background: #000; box-shadow: 0 0 15px rgba(253, 204, 13, 0.3);
+    }
+
+    #crosshair {
+      position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      width: 20px; height: 20px; border: 2px solid rgba(253, 204, 13, 0.5); border-radius: 50%;
+      z-index: 999; pointer-events: none;
+    }
   </style>
 </head>
 <body>
 
-  <video id="video-feed" autoplay playsinline></video>
+  <!-- 
+    EL FIX VITAL: 'muted' y 'playsinline' obligatorios para iOS. 
+    Y no usamos display:none, lo usamos como visor flotante.
+  -->
+  <video id="viewfinder" autoplay playsinline muted></video>
 
-  <canvas id="texture-canvas" width="4096" height="2048" style="display:none;"></canvas>
+  <!-- El Lienzo Equirectangular -->
+  <canvas id="texture-canvas" width="2048" height="1024" style="display:none;"></canvas>
 
-  <div id="ui">
-    <button id="start-btn">Activar Sensor Espacial</button>
+  <div id="crosshair"></div>
+
+  <div id="ui-layer">
+    <button id="start-btn" class="sgx-btn">1. Activar Ojo Métrico</button>
+    <button id="save-btn" class="sgx-btn" style="display:none;">2. Extraer Asset 360</button>
   </div>
 
   <a-scene xr-mode-ui="enabled: false">
@@ -33,105 +55,121 @@
       <canvas id="live-texture"></canvas>
     </a-assets>
 
-    <a-sky id="environment" color="#111" material="shader: flat; side: back"></a-sky>
+    <!-- Esfera Base. Arranca gris oscura para saber dónde no has pintado -->
+    <a-sky id="environment" color="#222" material="shader: flat; side: back"></a-sky>
 
     <a-camera id="player-cam" position="0 0 0" look-controls="pointerLockEnabled: false"></a-camera>
   </a-scene>
 
   <script>
-    // --- ARQUITECTURA DEL MOTOR TIER 1 ---
-
-    const video = document.getElementById('video-feed');
+    const video = document.getElementById('viewfinder');
     const canvas = document.getElementById('texture-canvas');
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    
     const startBtn = document.getElementById('start-btn');
+    const saveBtn = document.getElementById('save-btn');
     const sky = document.getElementById('environment');
     const cameraEl = document.getElementById('player-cam');
 
     let isScanning = false;
 
-    // 1. Iniciar Flujo Óptico (Cámara Ultrawide si es posible)
+    // Pintar el fondo del canvas de negro al inicio para evitar transparencias rotas en WebGL
+    ctx.fillStyle = "black";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
     async function initCamera() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { exact: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } }
+          video: { facingMode: { exact: "environment" } }
         });
         video.srcObject = stream;
-        video.play();
+        
+        // Promesa para asegurar que el video arranca antes de pintar
+        await new Promise(resolve => {
+          video.onloadedmetadata = () => {
+            video.play();
+            resolve();
+          };
+        });
+        
+        video.style.display = 'block'; // Mostramos el visor
       } catch (err) {
-        // Fallback si falla el ultrawide
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }});
-        video.srcObject = stream;
-        video.play();
+        // Fallback a cualquier cámara trasera si el ultrawide estricto falla
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }});
+          video.srcObject = stream;
+          await video.play();
+          video.style.display = 'block';
+        } catch (fallbackErr) {
+          alert("Error de cámara: Asegúrate de estar en HTTPS y dar permisos.");
+        }
       }
     }
 
-    // 2. Lógica del Botón: Permisos de iOS y Arranque
     startBtn.addEventListener('click', async () => {
-      // iOS requiere interacción del usuario para activar sensores
       if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
         const permission = await DeviceOrientationEvent.requestPermission();
         if (permission !== 'granted') {
-          alert('Se requiere acceso al giroscopio para mapear el espacio.');
+          alert('Necesitamos el giroscopio para pintar el espacio.');
           return;
         }
       }
       
+      startBtn.innerText = "Inicializando...";
       await initCamera();
       
-      // Conectar el Canvas como la textura de la esfera en vivo
       sky.setAttribute('material', `src: #texture-canvas; shader: flat`);
       
       isScanning = true;
-      startBtn.style.display = 'none'; // Limpiamos la UI para el creador
+      startBtn.style.display = 'none';
+      saveBtn.style.display = 'block';
     });
 
-    // 3. El Pincel Espacial (Render Loop)
-    // Usamos el motor interno de A-Frame (Three.js) para sincronizar frames
+    // Guardar el mapa al teléfono
+    saveBtn.addEventListener('click', () => {
+      const dataURL = canvas.toDataURL('image/jpeg', 0.9);
+      const link = document.createElement('a');
+      link.download = `SGX_Scan_${new Date().getTime()}.jpg`;
+      link.href = dataURL;
+      link.click();
+    });
+
+    // El Motor de Pintura en Vivo
     AFRAME.registerComponent('spatial-painter', {
       tick: function () {
         if (!isScanning || video.readyState !== video.HAVE_ENOUGH_DATA) return;
 
-        // Extraer rotación de la cámara (Tu "Ojo Métrico")
         const rotation = cameraEl.getAttribute('rotation');
         
-        // Matemáticas de Proyección Equirectangular
-        // Convertimos Pitch (-90 a 90) y Yaw (0 a 360) a Coordenadas UV del Canvas (4096x2048)
-        
-        // YAW: El eje horizontal (Giro 360)
-        // Normalizamos el ángulo de -180/180 o infinito a 0-360
+        // Mapeo Equirectangular básico
         let yaw = (rotation.y % 360 + 360) % 360; 
         let mapX = (yaw / 360) * canvas.width;
 
-        // PITCH: El eje vertical (Arriba/Abajo)
-        // A-Frame pitch es usualmente -90 (arriba) a 90 (abajo)
         let pitch = Math.max(-90, Math.min(90, rotation.x));
         let mapY = ((pitch + 90) / 180) * canvas.height;
 
-        // Dimensiones del "sello" o pincelada (basado en el FOV del lente)
-        // Ajusta estos valores si ves que la pintura se ve muy pequeña o muy grande
-        const stampWidth = canvas.width * (video.videoWidth / 4000); 
-        const stampHeight = canvas.height * (video.videoHeight / 2000);
+        // Tamaño del pincel (frame de la cámara). Lo hacemos más pequeño cerca de los polos para mitigar distorsión extrema.
+        let distortionFactor = Math.cos(pitch * Math.PI / 180);
+        
+        // Ajustamos la escala del 'sello' para que cubra bien.
+        const stampWidth = 400; 
+        const stampHeight = 300 * Math.max(0.3, distortionFactor); // Se comprime en los polos
 
-        // Centrar el sello en la coordenada
-        const drawX = canvas.width - mapX - (stampWidth / 2); // Invertido para proyección interna
+        const drawX = canvas.width - mapX - (stampWidth / 2); 
         const drawY = mapY - (stampHeight / 2);
 
-        // PINTAR EL FRAME EN LA MEMORIA RAM
-        // Nota: ctx.globalCompositeOperation = 'lighter' o 'source-over' controla cómo se mezclan los bordes
+        // Estampar
         ctx.drawImage(video, drawX, drawY, stampWidth, stampHeight);
 
-        // Actualizar la textura WebGL en el GPU
+        // Actualizar Textura WebGL
         const material = sky.getObject3D('mesh').material;
-        if (material.map) {
+        if (material && material.map) {
           material.map.needsUpdate = true;
         }
       }
     });
 
-    // Inyectar el componente al motor
     document.querySelector('a-scene').setAttribute('spatial-painter', '');
-
   </script>
 </body>
 </html>
