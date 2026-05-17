@@ -3,12 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Highcoon Nano-Bud Core | Terp-Matrix</title>
+    <title>Highcoon Nano-Bud Core | 3D Terp-Matrix</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&display=swap');
 
         :root {
-            /* Highcoon Official Palette (Extracted from Highcoon Games) */
             --bg-slate: #0f172a;
             --bg-darker: #020617;
             --border-subtle: rgba(148, 163, 184, 0.4);
@@ -28,7 +27,7 @@
             --terp-apinene: #14B8A6; 
             --terp-limonene: #FACC15;      
             
-            --accent-color: #22c55e; /* Default Highcoon Green */
+            --accent-color: #22c55e;
         }
 
         * { box-sizing: border-box; }
@@ -37,7 +36,6 @@
             margin: 0; 
             overflow: hidden; 
             background-color: var(--bg-darker);
-            /* Highcoon Games deep radial background */
             background-image: radial-gradient(circle at top left, rgba(34,197,94,0.12), rgba(15,23,42,0.98));
             font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
             color: var(--text-main); 
@@ -51,7 +49,6 @@
             top: clamp(10px, 2vw, 20px); 
             left: clamp(10px, 2vw, 20px); 
             z-index: 10; 
-            /* Highcade Card Gradient */
             background: radial-gradient(circle at top, rgba(15,118,110,0.25), rgba(15,23,42,0.92));
             backdrop-filter: blur(16px);
             -webkit-backdrop-filter: blur(16px);
@@ -95,16 +92,12 @@
             transition: opacity 0.3s ease;
             overflow-y: auto;
             flex: 1;
-            /* Hide scrollbar */
             scrollbar-width: none; 
             -ms-overflow-style: none;
         }
         .hud-content::-webkit-scrollbar { display: none; }
 
-        #hud.minimized .hud-content {
-            display: none;
-            opacity: 0;
-        }
+        #hud.minimized .hud-content { display: none; opacity: 0; }
 
         #hud h1 {
             font-family: 'Orbitron', sans-serif;
@@ -123,11 +116,8 @@
             transition: transform 0.3s ease, color 0.5s ease;
         }
 
-        #hud.minimized #hud-toggle-icon {
-            transform: rotate(-90deg);
-        }
+        #hud.minimized #hud-toggle-icon { transform: rotate(-90deg); }
 
-        /* Metrics (Highcoon Badge Style) */
         .metric-row {
             display: flex;
             justify-content: space-between;
@@ -157,7 +147,6 @@
             font-size: clamp(0.7rem, 1vw, 0.8rem);
         }
 
-        /* Section Titles */
         .section-title {
             font-size: clamp(0.65rem, 0.8vw, 0.75rem);
             color: #FFF;
@@ -168,7 +157,6 @@
             opacity: 0.9;
         }
 
-        /* Terp Matrix Buttons */
         .terp-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
@@ -208,7 +196,6 @@
             box-shadow: 0 0 6px currentColor;
         }
 
-        /* Action Buttons */
         .action-row {
             display: flex;
             gap: 6px;
@@ -226,13 +213,23 @@
             font-weight: 600;
             cursor: pointer;
             transition: var(--transition-fast);
+            text-align: center;
+            font-family: 'Orbitron', sans-serif;
+            letter-spacing: 1px;
         }
         .action-btn:hover {
             border-color: var(--accent-color);
             transform: translateY(-2px);
         }
+        
+        .upload-btn {
+            background: radial-gradient(circle at top, rgba(20, 184, 166, 0.3), rgba(15,23,42,0.9));
+            border-color: var(--terp-apinene);
+            color: #FFF;
+            width: 100%;
+            margin-bottom: 10px;
+        }
 
-        /* Custom Sliders */
         .slider-group {
             display: flex;
             flex-direction: column;
@@ -282,7 +279,6 @@
             border-radius: 4px;
         }
 
-        /* Cinematic Mode Button */
         #cinematic-btn {
             position: absolute;
             bottom: clamp(15px, 3vw, 30px);
@@ -318,6 +314,12 @@
             font-weight: 700;
         }
         
+        #loading-overlay {
+            position: absolute; inset: 0; background: rgba(2,6,23,0.9); z-index: 50;
+            display: none; align-items: center; justify-content: center; flex-direction: column;
+        }
+        #loading-overlay h2 { font-family: 'Orbitron', sans-serif; color: var(--terp-apinene); margin-bottom: 10px; }
+        
         @media (max-width: 768px) {
             #hud { top: 10px; left: 10px; right: 10px; min-width: auto; max-height: calc(100vh - 80px); }
         }
@@ -325,10 +327,13 @@
 </head>
 <body>
 
-    <!-- Cinematic Toggle Button -->
     <button id="cinematic-btn">👁️ CINEMATIC MODE</button>
 
-    <!-- UNIFIED HIGHCOON HUD -->
+    <div id="loading-overlay">
+        <h2>ASSIMILATING 3D DATA...</h2>
+        <p style="color: #94a3b8; font-size: 0.8rem;">Synthesizing Trichome Matrix</p>
+    </div>
+
     <div id="hud">
         <div class="hud-header" id="hud-toggle" title="Minimizar / Maximizar Panel">
             <h1>TERP-MATRIX</h1>
@@ -341,27 +346,28 @@
                 <span class="metric-value" id="vibe-readout">FULL SPECTRUM</span>
             </div>
             <div class="metric-row">
-                <span class="metric-label">TRICHOME COUNT</span>
-                <span class="metric-value" id="particle-count" style="color:#FFF; text-shadow:none;">0</span>
+                <span class="metric-label">TARGET MESH</span>
+                <span class="metric-value" id="mesh-readout" style="color:#FFF; text-shadow:none;">GALAXY SEED</span>
             </div>
             
+            <input type="file" id="glb-upload" accept=".glb,.gltf" style="display:none;">
+            <button class="action-btn upload-btn" id="btn-upload">📂 UPLOAD 3D MODEL (.GLB)</button>
+            
             <div class="section-title">ACTIVE MOLECULES</div>
-            <div class="terp-grid" id="terp-grid">
-                <!-- Populated via JS -->
-            </div>
+            <div class="terp-grid" id="terp-grid"></div>
+            
             <div class="action-row">
                 <button class="action-btn" id="btn-rnd">🎲 RANDOM</button>
                 <button class="action-btn" id="btn-full">🌌 FULL SPECTRUM</button>
             </div>
 
             <div class="section-title">PHYSICS OVERRIDE</div>
-            
             <div class="slider-group">
                 <div class="slider-header"><span>Flow Speed</span><span class="slider-val" id="val-speed">0.10</span></div>
                 <input type="range" id="sl-speed" min="0.01" max="0.5" step="0.01">
             </div>
             <div class="slider-group">
-                <div class="slider-header"><span>Spiral Spin</span><span class="slider-val" id="val-spin">0.10</span></div>
+                <div class="slider-header"><span>Matrix Spin</span><span class="slider-val" id="val-spin">0.10</span></div>
                 <input type="range" id="sl-spin" min="0.0" max="0.5" step="0.01">
             </div>
             <div class="slider-group">
@@ -381,7 +387,6 @@
         </div>
     </div>
 
-    <!-- Import Maps -->
     <script type="importmap">
         {
             "imports": {
@@ -394,18 +399,17 @@
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import { MeshSurfaceSampler } from 'three/addons/math/MeshSurfaceSampler.js';
+        import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
 
-        // --- UI LOGIC (HUD Collapse & Cinematic Mode) ---
+        // --- UI LOGIC ---
         const hudToggle = document.getElementById('hud-toggle');
         const hud = document.getElementById('hud');
-        
-        hudToggle.addEventListener('click', () => {
-            hud.classList.toggle('minimized');
-        });
+        hudToggle.addEventListener('click', () => hud.classList.toggle('minimized'));
 
         const cinematicBtn = document.getElementById('cinematic-btn');
         let isCinematic = false;
-
         cinematicBtn.addEventListener('click', () => {
             isCinematic = !isCinematic;
             if (isCinematic) {
@@ -433,11 +437,8 @@
             { id: "Limonene",      hex: "#FACC15", speed: 0.35, spin: 0.40, wave: 0.5,  chaos: 2.5, size: 1.5, text: "HYPER-ALERT" }
         ];
 
-        const state = {
-            matrix: {}
-        };
-        TERPENES.forEach(t => state.matrix[t.id] = true); // All on by default
-
+        const state = { matrix: {} };
+        TERPENES.forEach(t => state.matrix[t.id] = true);
         const targetPhysics = { speed: 0, spin: 0, wave: 0, chaos: 0, size: 0 };
 
         // --- 2. ARCHITECTURE SETUP ---
@@ -458,37 +459,34 @@
         controls.autoRotate = true;
         controls.autoRotateSpeed = 0.3;
 
-        // --- 3. ZERO-GC SHADER MATRIX ---
+        // --- 3. ZERO-GC SHADER MATRIX (HYBRID FOR 3D MORPHING) ---
         const PARTICLE_COUNT = 150000;
-        const particleCountEl = document.getElementById('particle-count');
-        if (particleCountEl) particleCountEl.innerText = PARTICLE_COUNT.toLocaleString();
-
+        
         const geometry = new THREE.BufferGeometry();
-        const positions = new Float32Array(PARTICLE_COUNT * 3);
+        const basePositions = new Float32Array(PARTICLE_COUNT * 3); // Base static position
         const colors = new Float32Array(PARTICLE_COUNT * 3);
-        const pRadii = new Float32Array(PARTICLE_COUNT);
-        const pAngles = new Float32Array(PARTICLE_COUNT);
         const pRandoms = new Float32Array(PARTICLE_COUNT);
 
+        // Generate Initial Galaxy Seed
         for (let i = 0; i < PARTICLE_COUNT; i++) {
             const r = Math.pow(Math.random(), 2) * 90;
-            pRadii[i] = r;
-
             const armAngle = ((i % 8) / 8) * Math.PI * 2;
             const spiralTwist = r * 0.15; 
             const spread = (Math.random() - 0.5) * (18 / (r*0.1 + 1)); 
+            const theta = armAngle + spiralTwist + spread;
             
-            pAngles[i] = armAngle + spiralTwist + spread;
             pRandoms[i] = Math.random() * Math.PI * 2;
             
-            positions[i * 3 + 1] = (Math.random() - 0.5) * (50 / (r*0.3 + 1));
+            basePositions[i * 3]     = r * Math.cos(theta);
+            basePositions[i * 3 + 1] = (Math.random() - 0.5) * (50 / (r*0.3 + 1));
+            basePositions[i * 3 + 2] = r * Math.sin(theta);
         }
 
-        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        geometry.setAttribute('aBasePos', new THREE.BufferAttribute(basePositions, 3));
         geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-        geometry.setAttribute('aRadius', new THREE.BufferAttribute(pRadii, 1));
-        geometry.setAttribute('aAngle', new THREE.BufferAttribute(pAngles, 1));
         geometry.setAttribute('aRandom', new THREE.BufferAttribute(pRandoms, 1));
+        // Fallback position attribute needed by Three.js internally
+        geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(PARTICLE_COUNT * 3), 3));
 
         function createTrichomeTexture() {
             const canvas = document.createElement('canvas');
@@ -520,8 +518,7 @@
             uniform float uChaos;
             uniform float uSize;
 
-            attribute float aRadius;
-            attribute float aAngle;
+            attribute vec3 aBasePos;
             attribute float aRandom;
 
             varying vec3 vColor;
@@ -529,15 +526,27 @@
             void main() {
                 vColor = color; 
                 
-                float angle = aAngle + uTime * uSpin;
-                float noiseY = sin(aRadius * 0.15 + uTime * 0.5 + aRandom) * uChaos;
-                float noiseX = cos(aRadius * 0.15 + uTime * 0.4 + aRandom) * uChaos;
-                float waveY = sin(angle * 3.0 - uTime * 1.5) * uWave * (aRadius * 0.02);
+                vec3 pos = aBasePos;
                 
-                vec3 pos = position;
-                pos.x = aRadius * cos(angle) + noiseX;
-                pos.z = aRadius * sin(angle) + noiseX; 
+                // Spin around center (Y axis) based on absolute base position
+                float cosA = cos(uTime * uSpin);
+                float sinA = sin(uTime * uSpin);
+                float rx = pos.x * cosA - pos.z * sinA;
+                float rz = pos.x * sinA + pos.z * cosA;
+
+                // Distance from center for wave logic
+                float dist = length(pos.xz);
+                
+                // Organic floating noise and disruption
+                float noiseY = sin(dist * 0.15 + uTime * 0.5 + aRandom) * uChaos;
+                float noiseX = cos(dist * 0.15 + uTime * 0.4 + aRandom) * uChaos;
+                
+                // Fluid flowing wave
+                float waveY = sin(dist * 0.2 - uTime * 1.5) * uWave;
+
+                pos.x = rx + noiseX;
                 pos.y = pos.y + waveY + noiseY;
+                pos.z = rz + noiseX;
 
                 vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
                 gl_PointSize = uSize * (250.0 / -mvPosition.z);
@@ -568,7 +577,96 @@
         const terpMatrix = new THREE.Points(geometry, material);
         scene.add(terpMatrix);
 
-        // --- 4. HUD LOGIC & RECALCULATION ---
+        // --- 3B. 3D GLB MORPHING LOGIC (MULTI-MESH FIX) ---
+        const btnUpload = document.getElementById('btn-upload');
+        const fileInput = document.getElementById('glb-upload');
+        const loadingOverlay = document.getElementById('loading-overlay');
+        const meshReadout = document.getElementById('mesh-readout');
+        const gltfLoader = new GLTFLoader();
+
+        btnUpload.addEventListener('click', () => fileInput.click());
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            loadingOverlay.style.display = 'flex';
+            const url = URL.createObjectURL(file);
+
+            gltfLoader.load(url, (gltf) => {
+                const geometries = [];
+                gltf.scene.updateMatrixWorld(true);
+                
+                // Extract all valid meshes and apply their world transforms
+                gltf.scene.traverse((child) => {
+                    if (child.isMesh && child.geometry && child.geometry.attributes.position) {
+                        const geom = new THREE.BufferGeometry();
+                        // Only copy position to prevent mergeGeometries from failing on mismatched attributes
+                        geom.setAttribute('position', child.geometry.attributes.position.clone());
+                        geom.applyMatrix4(child.matrixWorld);
+                        geometries.push(geom);
+                    }
+                });
+
+                if (geometries.length > 0) {
+                    // Merge all extracted geometries into one massive unified geometry
+                    const mergedGeometry = BufferGeometryUtils.mergeGeometries(geometries);
+                    
+                    if (mergedGeometry) {
+                        // Center and Scale the unified geometry automatically
+                        mergedGeometry.computeBoundingBox();
+                        const box = mergedGeometry.boundingBox;
+                        const center = new THREE.Vector3();
+                        box.getCenter(center);
+                        mergedGeometry.translate(-center.x, -center.y, -center.z);
+
+                        const size = new THREE.Vector3();
+                        box.getSize(size);
+                        const maxDim = Math.max(size.x, size.y, size.z);
+                        const scaleTarget = 70.0 / maxDim; // Fit within the visualizer
+                        mergedGeometry.scale(scaleTarget, scaleTarget, scaleTarget);
+
+                        // Build Surface Sampler from the single merged mesh
+                        const dummyMesh = new THREE.Mesh(mergedGeometry);
+                        const sampler = new MeshSurfaceSampler(dummyMesh).build();
+                        
+                        const tempPosition = new THREE.Vector3();
+                        const basePosAttr = geometry.attributes.aBasePos.array;
+
+                        // Sample ALL 150,000 points across the unified mesh
+                        for (let i = 0; i < PARTICLE_COUNT; i++) {
+                            sampler.sample(tempPosition);
+                            // Morph the base positions to the 3D model's skin
+                            basePosAttr[i * 3]     = tempPosition.x;
+                            basePosAttr[i * 3 + 1] = tempPosition.y;
+                            basePosAttr[i * 3 + 2] = tempPosition.z;
+                        }
+                        
+                        geometry.attributes.aBasePos.needsUpdate = true;
+                        meshReadout.innerText = file.name.toUpperCase();
+
+                        // Stabilize physics automatically so the 3D model doesn't rip apart initially
+                        targetPhysics.wave = 0.5;
+                        targetPhysics.chaos = 0.1;
+                        updateSliderDisplay();
+
+                    } else {
+                        alert("Error al unir las mallas del modelo.");
+                    }
+                } else {
+                    alert("No se encontró ninguna malla 3D válida en el archivo.");
+                }
+                
+                loadingOverlay.style.display = 'none';
+                URL.revokeObjectURL(url);
+            }, undefined, (error) => {
+                console.error(error);
+                loadingOverlay.style.display = 'none';
+                alert("Error cargando el modelo 3D.");
+            });
+        });
+
+        // --- 4. TERP-MATRIX LOGIC & RECALCULATION ---
         const rootVars = document.documentElement.style;
         const vibeReadout = document.getElementById('vibe-readout');
         const gridEl = document.getElementById('terp-grid');
@@ -588,7 +686,6 @@
             });
         }
 
-        // Sliders Elements
         const slSpeed = document.getElementById('sl-speed');
         const slSpin = document.getElementById('sl-spin');
         const slWave = document.getElementById('sl-wave');
@@ -617,14 +714,12 @@
         function recalculateMatrix(overrideMode = false) {
             const activeTerps = TERPENES.filter(t => state.matrix[t.id]);
             
-            // Failsafe: if user unchecks all, force Full Spectrum
             if (activeTerps.length === 0) {
                 TERPENES.forEach(t => state.matrix[t.id] = true);
                 recalculateMatrix();
                 return;
             }
 
-            // Sync Buttons UI
             if (gridEl) {
                 const buttons = gridEl.children;
                 TERPENES.forEach((t, i) => {
@@ -656,7 +751,6 @@
                 updateSliderDisplay();
             }
 
-            // Recolor Particles efficiently
             const colorArray = geometry.attributes.color.array;
             for (let i = 0; i < PARTICLE_COUNT; i++) {
                 const randomActiveTerp = activeTerps[Math.floor(Math.random() * count)];
@@ -672,13 +766,12 @@
             }
             geometry.attributes.color.needsUpdate = true;
 
-            // Update Global Theme
             if (vibeReadout) {
                 if(overrideMode) {
                     vibeReadout.innerText = "CUSTOM OVERRIDE";
                 } else if (count === 8) {
                     vibeReadout.innerText = "FULL SPECTRUM (BALANCE)";
-                    rootVars.setProperty('--accent-color', '#22c55e'); // Default Green
+                    rootVars.setProperty('--accent-color', '#22c55e'); 
                 } else if (count === 1) {
                     vibeReadout.innerText = activeTerps[0].text;
                     rootVars.setProperty('--accent-color', activeTerps[0].hex);
@@ -688,12 +781,10 @@
                 }
             }
 
-            // Sync Header UI color
             const hudToggleIcon = document.getElementById('hud-toggle-icon');
             if(hudToggleIcon) hudToggleIcon.style.color = 'var(--accent-color)';
         }
 
-        // Action Buttons
         const btnRnd = document.getElementById('btn-rnd');
         if (btnRnd) {
             btnRnd.onclick = () => {
@@ -710,7 +801,6 @@
             };
         }
 
-        // Slider Listeners (Manual Overrides)
         const setupSlider = (id, prop) => {
             const el = document.getElementById('sl-' + id);
             if (el) {
@@ -720,7 +810,7 @@
                     if (valEl) {
                         valEl.innerText = targetPhysics[prop].toFixed(id==='wave'||id==='chaos'||id==='size'?1:2);
                     }
-                    recalculateMatrix(true); // pass true for override mode
+                    recalculateMatrix(true); 
                 });
             }
         };
@@ -730,14 +820,13 @@
         setupSlider('chaos', 'chaos');
         setupSlider('size', 'size');
 
-        // Initial Boot
         recalculateMatrix();
         uniforms.uSpin.value = targetPhysics.spin;
         uniforms.uWave.value = targetPhysics.wave;
         uniforms.uChaos.value = targetPhysics.chaos;
         uniforms.uSize.value = targetPhysics.size;
 
-        // --- 5. RENDER LOOP (100% BULLETPROOF FLUID FIX) ---
+        // --- 5. RENDER LOOP ---
         let internalTime = 0;
         let lastTime = performance.now();
         let fpsTime = performance.now();
@@ -748,16 +837,12 @@
             requestAnimationFrame(animate);
 
             const now = performance.now();
-            // CÁLCULO SEGURO DEL DELTA TIME (Evita NaN o saltos drásticos)
             const delta = Math.max(0, Math.min((now - lastTime) / 1000, 0.1)) || 0.016; 
             lastTime = now;
             
             frames++;
-            // BLOQUE BLINDADO: Null checks para evitar colapso exacto al segundo 1
             if (now > fpsTime + 1000) {
-                if (fpsCounter) {
-                    fpsCounter.innerText = `${frames} FPS`;
-                }
+                if (fpsCounter) fpsCounter.innerText = `${frames} FPS`;
                 frames = 0;
                 fpsTime = now;
             }
