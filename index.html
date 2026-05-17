@@ -1,170 +1,787 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>SGX | 6-Face Skybox Scanner</title>
-  <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
-  <style>
-    body { margin: 0; padding: 0; background-color: #000; font-family: 'Courier New', Courier, monospace; overflow: hidden; }
-    
-    /* UI SGX - Panel de Control Flotante */
-    #dashboard {
-      position: absolute;
-      top: 10px; left: 50%; transform: translateX(-50%);
-      background: rgba(50, 82, 123, 0.9); /* Azul SGX */
-      border: 1px solid #FDCC0D; /* Amarillo SGX */
-      padding: 15px; border-radius: 8px; z-index: 1000;
-      display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
-      backdrop-filter: blur(10px);
-      width: 90%; max-width: 400px;
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Highcoon Nano-Bud Core | Terp-Matrix</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&display=swap');
 
-    .sgx-title { grid-column: span 2; color: #FDCC0D; text-align: center; margin: 0; font-size: 14px; text-transform: uppercase; letter-spacing: 2px;}
-    .sgx-subtitle { grid-column: span 2; color: #FFF; text-align: center; margin: 0 0 10px 0; font-size: 10px; }
+        :root {
+            /* Highcoon Official Palette (Extracted from Highcoon Games) */
+            --bg-slate: #0f172a;
+            --bg-darker: #020617;
+            --border-subtle: rgba(148, 163, 184, 0.4);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --radius-card: 18px;
+            --radius-pill: 999px;
+            --transition-fast: 0.15s ease;
+            
+            /* Full Spectrum Terpenes */
+            --terp-myrcene: #1D4ED8;       
+            --terp-terpinolene: #A855F7; 
+            --terp-linalool: #EC4899; 
+            --terp-humulene: #F97316; 
+            --terp-caryophyllene: #EF4444; 
+            --terp-bpinene: #22C55E; 
+            --terp-apinene: #14B8A6; 
+            --terp-limonene: #FACC15;      
+            
+            --accent-color: #22c55e; /* Default Highcoon Green */
+        }
 
-    /* Botones de Captura */
-    .face-btn {
-      position: relative; overflow: hidden;
-      background: #000; border: 1px solid #FDCC0D; color: #FDCC0D;
-      padding: 12px 5px; text-align: center; font-weight: bold; font-size: 11px;
-      border-radius: 4px; cursor: pointer; text-transform: uppercase;
-    }
-    .face-btn input[type="file"] {
-      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-      opacity: 0; cursor: pointer;
-    }
-    .face-btn.loaded { background: #FDCC0D; color: #000; }
-    .face-btn.loading { background: #888; color: #FFF; border-color: #888; }
+        * { box-sizing: border-box; }
 
-    #toggle-ui {
-      grid-column: span 2; background: transparent; border: 1px dashed #FDCC0D;
-      color: #FFF; padding: 8px; text-align: center; border-radius: 4px; cursor: pointer; font-size: 10px; margin-top: 5px;
-    }
-  </style>
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background-color: var(--bg-darker);
+            /* Highcoon Games deep radial background */
+            background-image: radial-gradient(circle at top left, rgba(34,197,94,0.12), rgba(15,23,42,0.98));
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            color: var(--text-main); 
+            user-select: none;
+            touch-action: none;
+        }
+
+        /* Highcoon Games Bio-Cybernetic Soft UI */
+        #hud { 
+            position: absolute; 
+            top: clamp(10px, 2vw, 20px); 
+            left: clamp(10px, 2vw, 20px); 
+            z-index: 10; 
+            /* Highcade Card Gradient */
+            background: radial-gradient(circle at top, rgba(15,118,110,0.25), rgba(15,23,42,0.92));
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-card);
+            padding: clamp(12px, 2vw, 20px);
+            min-width: clamp(280px, 25vw, 340px);
+            max-height: calc(100vh - 40px);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.7);
+            transition: all 0.4s cubic-bezier(0.19, 1, 0.22, 1);
+            pointer-events: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #hud.minimized {
+            padding-bottom: clamp(10px, 1.5vw, 15px);
+            min-width: clamp(220px, 20vw, 260px);
+            background: rgba(15,23,42,0.95);
+        }
+
+        .hud-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            border-bottom: 1px solid transparent;
+            transition: border-color 0.3s ease;
+            flex-shrink: 0;
+        }
+
+        #hud:not(.minimized) .hud-header {
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 8px;
+            margin-bottom: 10px;
+        }
+
+        .hud-content {
+            display: flex;
+            flex-direction: column;
+            transition: opacity 0.3s ease;
+            overflow-y: auto;
+            flex: 1;
+            /* Hide scrollbar */
+            scrollbar-width: none; 
+            -ms-overflow-style: none;
+        }
+        .hud-content::-webkit-scrollbar { display: none; }
+
+        #hud.minimized .hud-content {
+            display: none;
+            opacity: 0;
+        }
+
+        #hud h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: clamp(1.1rem, 1.5vw, 1.4rem);
+            font-weight: 900;
+            color: #FFF;
+            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            text-shadow: 0 0 12px rgba(255, 255, 255, 0.4);
+        }
+
+        #hud-toggle-icon {
+            color: var(--accent-color);
+            font-size: clamp(0.7rem, 1vw, 0.8rem);
+            transition: transform 0.3s ease, color 0.5s ease;
+        }
+
+        #hud.minimized #hud-toggle-icon {
+            transform: rotate(-90deg);
+        }
+
+        /* Metrics (Highcoon Badge Style) */
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: clamp(0.7rem, 1vw, 0.8rem);
+            background: rgba(2, 6, 23, 0.6);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 12px;
+            padding: 8px 12px;
+        }
+
+        .metric-label {
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-size: clamp(0.6rem, 0.8vw, 0.65rem);
+            font-weight: 600;
+        }
+
+        .metric-value {
+            font-weight: 700;
+            color: var(--accent-color);
+            transition: color 0.5s ease, text-shadow 0.5s ease;
+            text-align: right;
+            max-width: 65%;
+            font-size: clamp(0.7rem, 1vw, 0.8rem);
+        }
+
+        /* Section Titles */
+        .section-title {
+            font-size: clamp(0.65rem, 0.8vw, 0.75rem);
+            color: #FFF;
+            margin: 12px 0 8px 0;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            font-weight: 700;
+            opacity: 0.9;
+        }
+
+        /* Terp Matrix Buttons */
+        .terp-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+
+        .terp-btn {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-muted);
+            padding: 8px 10px;
+            border-radius: 10px;
+            font-size: clamp(0.65rem, 0.8vw, 0.75rem);
+            font-family: inherit;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition-fast);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            text-align: left;
+        }
+
+        .terp-btn.active {
+            background: radial-gradient(circle at top, rgba(34,197,94,0.2), rgba(15,23,42,0.98));
+            border-color: currentColor;
+            color: #FFF;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+        }
+
+        .terp-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: currentColor;
+            box-shadow: 0 0 6px currentColor;
+        }
+
+        /* Action Buttons */
+        .action-row {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 10px;
+        }
+        
+        .action-btn {
+            flex: 1;
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-main);
+            padding: 8px;
+            border-radius: 999px;
+            font-size: clamp(0.65rem, 0.8vw, 0.75rem);
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition-fast);
+        }
+        .action-btn:hover {
+            border-color: var(--accent-color);
+            transform: translateY(-2px);
+        }
+
+        /* Custom Sliders */
+        .slider-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-bottom: 10px;
+            background: rgba(2, 6, 23, 0.4);
+            padding: 8px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        .slider-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: clamp(0.65rem, 0.8vw, 0.7rem);
+            color: var(--text-muted);
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .slider-val {
+            color: var(--accent-color);
+            transition: color 0.5s ease;
+            font-weight: 700;
+        }
+        input[type=range] {
+            -webkit-appearance: none; 
+            width: 100%; 
+            background: transparent; 
+            margin: 6px 0;
+        }
+        input[type=range]:focus { outline: none; }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; 
+            height: 16px; 
+            width: 16px; 
+            border-radius: 50%;
+            background: var(--accent-color); 
+            cursor: pointer; 
+            margin-top: -6px;
+            box-shadow: 0 0 10px var(--accent-color); 
+            border: 2px solid #fff;
+            transition: background 0.5s ease, box-shadow 0.5s ease;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%; 
+            height: 4px; 
+            background: rgba(255,255,255,0.1); 
+            border-radius: 4px;
+        }
+
+        /* Cinematic Mode Button */
+        #cinematic-btn {
+            position: absolute;
+            bottom: clamp(15px, 3vw, 30px);
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            background: radial-gradient(circle at top, rgba(34,197,94,0.2), rgba(15,23,42,0.98));
+            color: #FFF;
+            padding: clamp(8px, 1vw, 10px) clamp(16px, 2vw, 24px);
+            font-size: clamp(0.65rem, 1vw, 0.75rem);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-pill);
+            letter-spacing: 1px;
+            font-family: inherit;
+            font-weight: 700;
+            box-shadow: 0 6px 16px rgba(0,0,0,0.6);
+            cursor: pointer;
+            transition: var(--transition-fast);
+        }
+        #cinematic-btn:hover {
+            border-color: var(--accent-color);
+            transform: translate(-50%, -3px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.8);
+        }
+
+        .hc-tag {
+            text-align: center;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            margin-top: 10px;
+            letter-spacing: 1px;
+            font-weight: 700;
+        }
+        
+        @media (max-width: 768px) {
+            #hud { top: 10px; left: 10px; right: 10px; min-width: auto; max-height: calc(100vh - 80px); }
+        }
+    </style>
 </head>
 <body>
 
-  <div id="dashboard">
-    <h1 class="sgx-title">SGX Skybox 6D</h1>
-    <p class="sgx-subtitle">Lente 0.5x. Gira 90° por foto.</p>
-    
-    <!-- Polos -->
-    <div class="face-btn" id="btn-top">
-      Techo (Cenit)
-      <input type="file" accept="image/*" capture="environment" data-target="#plane-top" data-btn="#btn-top">
-    </div>
-    <div class="face-btn" id="btn-bottom">
-      Piso (Nadir)
-      <input type="file" accept="image/*" capture="environment" data-target="#plane-bottom" data-btn="#btn-bottom">
-    </div>
+    <!-- Cinematic Toggle Button -->
+    <button id="cinematic-btn">👁️ CINEMATIC MODE</button>
 
-    <!-- Eje Horizontal -->
-    <div class="face-btn" id="btn-front">
-      Norte (Frente)
-      <input type="file" accept="image/*" capture="environment" data-target="#plane-front" data-btn="#btn-front">
-    </div>
-    <div class="face-btn" id="btn-back">
-      Sur (Atrás)
-      <input type="file" accept="image/*" capture="environment" data-target="#plane-back" data-btn="#btn-back">
-    </div>
-    <div class="face-btn" id="btn-right">
-      Este (Derecha)
-      <input type="file" accept="image/*" capture="environment" data-target="#plane-right" data-btn="#btn-right">
-    </div>
-    <div class="face-btn" id="btn-left">
-      Oeste (Izquierda)
-      <input type="file" accept="image/*" capture="environment" data-target="#plane-left" data-btn="#btn-left">
-    </div>
-    
-    <div id="toggle-ui" onclick="document.getElementById('dashboard').style.display='none'">[ Ocultar UI (Doble tap para volver) ]</div>
-  </div>
-
-  <a-scene xr-mode-ui="enabled: false">
-    <!-- Assets Manager: Inyectaremos el Base64 aquí para que WebGL lo lea nativo -->
-    <a-assets id="asset-manager">
-      <img id="tex-front" src="">
-      <img id="tex-back" src="">
-      <img id="tex-right" src="">
-      <img id="tex-left" src="">
-      <img id="tex-top" src="">
-      <img id="tex-bottom" src="">
-    </a-assets>
-
-    <a-camera position="0 0 0" look-controls="reverseMouseDrag: true"></a-camera>
-
-    <!-- 
-      Arquitectura del Cubo 6D:
-      Las rotaciones están calculadas para que las normales miren hacia el centro (0,0,0).
-      Evitamos el "side: back" para prevenir inversiones de UV (efecto espejo).
-    -->
-    <a-entity id="skybox" position="0 0 0">
-      <!-- Paredes (Eje Y) -->
-      <a-plane id="plane-front" position="0 0 -50" rotation="0 0 0" width="100" height="100" material="shader: flat; color: #111"></a-plane>
-      <a-plane id="plane-back" position="0 0 50" rotation="0 180 0" width="100" height="100" material="shader: flat; color: #111"></a-plane>
-      <a-plane id="plane-right" position="50 0 0" rotation="0 -90 0" width="100" height="100" material="shader: flat; color: #111"></a-plane>
-      <a-plane id="plane-left" position="-50 0 0" rotation="0 90 0" width="100" height="100" material="shader: flat; color: #111"></a-plane>
-      
-      <!-- Polos (Eje X) -->
-      <!-- Rotamos 90 en X para mirar abajo hacia el usuario, y -90 en X para mirar arriba -->
-      <a-plane id="plane-top" position="0 50 0" rotation="90 0 0" width="100" height="100" material="shader: flat; color: #222"></a-plane>
-      <a-plane id="plane-bottom" position="0 -50 0" rotation="-90 0 0" width="100" height="100" material="shader: flat; color: #222"></a-plane>
-    </a-entity>
-
-  </a-scene>
-
-  <script>
-    document.body.addEventListener('dblclick', () => {
-      document.getElementById('dashboard').style.display = 'grid';
-    });
-
-    document.querySelectorAll('input[type="file"]').forEach(input => bindInput(input));
-
-    function bindInput(input) {
-      input.addEventListener('change', function(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-
-        const targetPlaneId = this.getAttribute('data-target');
-        const btnId = this.getAttribute('data-btn');
-        const plane = document.querySelector(targetPlaneId);
-        const btn = document.querySelector(btnId);
+    <!-- UNIFIED HIGHCOON HUD -->
+    <div id="hud">
+        <div class="hud-header" id="hud-toggle" title="Minimizar / Maximizar Panel">
+            <h1>TERP-MATRIX</h1>
+            <span id="hud-toggle-icon">▼</span>
+        </div>
         
-        // Extraemos el ID del asset correspondiente (ej. de "#plane-front" a "tex-front")
-        const assetId = targetPlaneId.replace('#plane-', 'tex-');
-        const imgAsset = document.getElementById(assetId);
+        <div class="hud-content">
+            <div class="metric-row">
+                <span class="metric-label">CURRENT VIBE</span>
+                <span class="metric-value" id="vibe-readout">FULL SPECTRUM</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">TRICHOME COUNT</span>
+                <span class="metric-value" id="particle-count" style="color:#FFF; text-shadow:none;">0</span>
+            </div>
+            
+            <div class="section-title">ACTIVE MOLECULES</div>
+            <div class="terp-grid" id="terp-grid">
+                <!-- Populated via JS -->
+            </div>
+            <div class="action-row">
+                <button class="action-btn" id="btn-rnd">🎲 RANDOM</button>
+                <button class="action-btn" id="btn-full">🌌 FULL SPECTRUM</button>
+            </div>
 
-        // Feedback Visual de Carga
-        btn.classList.remove('loaded');
-        btn.classList.add('loading');
-        btn.innerHTML = 'Procesando...';
+            <div class="section-title">PHYSICS OVERRIDE</div>
+            
+            <div class="slider-group">
+                <div class="slider-header"><span>Flow Speed</span><span class="slider-val" id="val-speed">0.10</span></div>
+                <input type="range" id="sl-speed" min="0.01" max="0.5" step="0.01">
+            </div>
+            <div class="slider-group">
+                <div class="slider-header"><span>Spiral Spin</span><span class="slider-val" id="val-spin">0.10</span></div>
+                <input type="range" id="sl-spin" min="0.0" max="0.5" step="0.01">
+            </div>
+            <div class="slider-group">
+                <div class="slider-header"><span>Fluid Wave</span><span class="slider-val" id="val-wave">4.0</span></div>
+                <input type="range" id="sl-wave" min="0.0" max="15.0" step="0.1">
+            </div>
+            <div class="slider-group">
+                <div class="slider-header"><span>Chaos</span><span class="slider-val" id="val-chaos">0.8</span></div>
+                <input type="range" id="sl-chaos" min="0.0" max="5.0" step="0.1">
+            </div>
+            <div class="slider-group">
+                <div class="slider-header"><span>Trichome Size</span><span class="slider-val" id="val-size">3.5</span></div>
+                <input type="range" id="sl-size" min="0.5" max="8.0" step="0.1">
+            </div>
 
-        // EL HACK DE SISTEMAS: Usamos FileReader para forzar la lectura del archivo a memoria Base64.
-        // Esto puentea el bloqueo de CORS de iOS Safari para texturas locales.
-        const reader = new FileReader();
+            <div class="hc-tag">POWERED BY HIGHCOON</div>
+        </div>
+    </div>
+
+    <!-- Import Maps -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // --- UI LOGIC (HUD Collapse & Cinematic Mode) ---
+        const hudToggle = document.getElementById('hud-toggle');
+        const hud = document.getElementById('hud');
         
-        reader.onload = function(e) {
-          const base64Data = e.target.result;
-          
-          // 1. Inyectamos la data pura al Asset Manager
-          imgAsset.src = base64Data;
-          
-          // 2. Le decimos al plano que lea ese asset. A-Frame actualiza el WebGL automáticamente.
-          plane.setAttribute('material', `src: #${assetId}; shader: flat; color: #FFF`);
-          
-          // 3. UI Status Update
-          btn.classList.remove('loading');
-          btn.classList.add('loaded');
-          
-          // Re-renderizamos el input para permitir sobrescribir la foto si quedó mal
-          btn.innerHTML = `✅ ${btnId.replace('#btn-', '').toUpperCase()} <input type="file" accept="image/*" capture="environment" data-target="${targetPlaneId}" data-btn="${btnId}">`;
-          bindInput(btn.querySelector('input'));
+        hudToggle.addEventListener('click', () => {
+            hud.classList.toggle('minimized');
+        });
+
+        const cinematicBtn = document.getElementById('cinematic-btn');
+        let isCinematic = false;
+
+        cinematicBtn.addEventListener('click', () => {
+            isCinematic = !isCinematic;
+            if (isCinematic) {
+                hud.style.opacity = '0';
+                hud.style.pointerEvents = 'none';
+                cinematicBtn.innerText = '👁️ SHOW INTERFACE';
+                cinematicBtn.style.opacity = '0.4';
+            } else {
+                hud.style.opacity = '1';
+                hud.style.pointerEvents = 'auto';
+                cinematicBtn.innerText = '👁️ CINEMATIC MODE';
+                cinematicBtn.style.opacity = '1';
+            }
+        });
+
+        // --- 1. THE TERPENE LORE ---
+        const TERPENES = [
+            { id: "Myrcene",       hex: "#1D4ED8", speed: 0.02, spin: 0.01, wave: 10.0, chaos: 0.1, size: 5.5, text: "DEEP COUCH-LOCK" },
+            { id: "Terpinolene",   hex: "#A855F7", speed: 0.04, spin: 0.03, wave: 8.0,  chaos: 0.3, size: 4.5, text: "CONTEMPLATIVE" },
+            { id: "Linalool",      hex: "#EC4899", speed: 0.06, spin: 0.05, wave: 6.0,  chaos: 0.5, size: 4.0, text: "SOFT FLORAL DREAM" },
+            { id: "Humulene",      hex: "#F97316", speed: 0.10, spin: 0.08, wave: 4.5,  chaos: 0.8, size: 3.5, text: "EARTHY BALANCE" },
+            { id: "Caryophyllene", hex: "#EF4444", speed: 0.15, spin: 0.15, wave: 3.0,  chaos: 1.2, size: 3.0, text: "SPICY & ACTIVE" },
+            { id: "BPinene",       hex: "#22C55E", speed: 0.20, spin: 0.20, wave: 2.0,  chaos: 1.5, size: 2.5, text: "FRESH CLARITY" },
+            { id: "APinene",       hex: "#14B8A6", speed: 0.25, spin: 0.25, wave: 1.0,  chaos: 1.8, size: 2.0, text: "SHARP COGNITION" },
+            { id: "Limonene",      hex: "#FACC15", speed: 0.35, spin: 0.40, wave: 0.5,  chaos: 2.5, size: 1.5, text: "HYPER-ALERT" }
+        ];
+
+        const state = {
+            matrix: {}
+        };
+        TERPENES.forEach(t => state.matrix[t.id] = true); // All on by default
+
+        const targetPhysics = { speed: 0, spin: 0, wave: 0, chaos: 0, size: 0 };
+
+        // --- 2. ARCHITECTURE SETUP ---
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x020617, 0.005); 
+
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 40, 100);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance", alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        document.body.appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.autoRotate = true;
+        controls.autoRotateSpeed = 0.3;
+
+        // --- 3. ZERO-GC SHADER MATRIX ---
+        const PARTICLE_COUNT = 150000;
+        const particleCountEl = document.getElementById('particle-count');
+        if (particleCountEl) particleCountEl.innerText = PARTICLE_COUNT.toLocaleString();
+
+        const geometry = new THREE.BufferGeometry();
+        const positions = new Float32Array(PARTICLE_COUNT * 3);
+        const colors = new Float32Array(PARTICLE_COUNT * 3);
+        const pRadii = new Float32Array(PARTICLE_COUNT);
+        const pAngles = new Float32Array(PARTICLE_COUNT);
+        const pRandoms = new Float32Array(PARTICLE_COUNT);
+
+        for (let i = 0; i < PARTICLE_COUNT; i++) {
+            const r = Math.pow(Math.random(), 2) * 90;
+            pRadii[i] = r;
+
+            const armAngle = ((i % 8) / 8) * Math.PI * 2;
+            const spiralTwist = r * 0.15; 
+            const spread = (Math.random() - 0.5) * (18 / (r*0.1 + 1)); 
+            
+            pAngles[i] = armAngle + spiralTwist + spread;
+            pRandoms[i] = Math.random() * Math.PI * 2;
+            
+            positions[i * 3 + 1] = (Math.random() - 0.5) * (50 / (r*0.3 + 1));
+        }
+
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+        geometry.setAttribute('aRadius', new THREE.BufferAttribute(pRadii, 1));
+        geometry.setAttribute('aAngle', new THREE.BufferAttribute(pAngles, 1));
+        geometry.setAttribute('aRandom', new THREE.BufferAttribute(pRandoms, 1));
+
+        function createTrichomeTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 64; canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+            const gradient = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+            gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+            gradient.addColorStop(0.3, 'rgba(255, 255, 255, 0.6)');
+            gradient.addColorStop(0.7, 'rgba(255, 255, 255, 0.1)');
+            gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, 64, 64);
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        const uniforms = {
+            uTime: { value: 0 },
+            uSpin: { value: 0 },
+            uWave: { value: 0 },
+            uChaos: { value: 0 },
+            uSize: { value: 0 },
+            uTexture: { value: createTrichomeTexture() }
         };
 
-        // Comienza la trituración del archivo
-        reader.readAsDataURL(file);
-      });
-    }
-  </script>
+        const vertexShader = `
+            uniform float uTime;
+            uniform float uSpin;
+            uniform float uWave;
+            uniform float uChaos;
+            uniform float uSize;
+
+            attribute float aRadius;
+            attribute float aAngle;
+            attribute float aRandom;
+
+            varying vec3 vColor;
+
+            void main() {
+                vColor = color; 
+                
+                float angle = aAngle + uTime * uSpin;
+                float noiseY = sin(aRadius * 0.15 + uTime * 0.5 + aRandom) * uChaos;
+                float noiseX = cos(aRadius * 0.15 + uTime * 0.4 + aRandom) * uChaos;
+                float waveY = sin(angle * 3.0 - uTime * 1.5) * uWave * (aRadius * 0.02);
+                
+                vec3 pos = position;
+                pos.x = aRadius * cos(angle) + noiseX;
+                pos.z = aRadius * sin(angle) + noiseX; 
+                pos.y = pos.y + waveY + noiseY;
+
+                vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+                gl_PointSize = uSize * (250.0 / -mvPosition.z);
+                gl_Position = projectionMatrix * mvPosition;
+            }
+        `;
+
+        const fragmentShader = `
+            uniform sampler2D uTexture;
+            varying vec3 vColor;
+
+            void main() {
+                vec4 texColor = texture2D(uTexture, gl_PointCoord);
+                gl_FragColor = vec4(vColor * texColor.rgb, texColor.a * 0.85);
+            }
+        `;
+
+        const material = new THREE.ShaderMaterial({
+            uniforms: uniforms,
+            vertexShader: vertexShader,
+            fragmentShader: fragmentShader,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+            transparent: true,
+            vertexColors: true
+        });
+
+        const terpMatrix = new THREE.Points(geometry, material);
+        scene.add(terpMatrix);
+
+        // --- 4. HUD LOGIC & RECALCULATION ---
+        const rootVars = document.documentElement.style;
+        const vibeReadout = document.getElementById('vibe-readout');
+        const gridEl = document.getElementById('terp-grid');
+
+        // Build Terpene Buttons
+        if (gridEl) {
+            TERPENES.forEach(t => {
+                const btn = document.createElement('button');
+                btn.className = 'terp-btn active';
+                btn.style.color = t.hex;
+                btn.innerHTML = `<div class="terp-dot" style="background:${t.hex}"></div> ${t.id}`;
+                btn.onclick = () => {
+                    state.matrix[t.id] = !state.matrix[t.id];
+                    recalculateMatrix();
+                };
+                gridEl.appendChild(btn);
+            });
+        }
+
+        // Sliders Elements
+        const slSpeed = document.getElementById('sl-speed');
+        const slSpin = document.getElementById('sl-spin');
+        const slWave = document.getElementById('sl-wave');
+        const slChaos = document.getElementById('sl-chaos');
+        const slSize = document.getElementById('sl-size');
+
+        const updateSliderDisplay = () => {
+            const formatVal = (id, val) => {
+                const el = document.getElementById('val-' + id);
+                if (el) el.innerText = val.toFixed(id==='wave'||id==='chaos'||id==='size'?1:2);
+            };
+            
+            formatVal('speed', targetPhysics.speed);
+            formatVal('spin', targetPhysics.spin);
+            formatVal('wave', targetPhysics.wave);
+            formatVal('chaos', targetPhysics.chaos);
+            formatVal('size', targetPhysics.size);
+            
+            if (slSpeed) slSpeed.value = targetPhysics.speed;
+            if (slSpin) slSpin.value = targetPhysics.spin;
+            if (slWave) slWave.value = targetPhysics.wave;
+            if (slChaos) slChaos.value = targetPhysics.chaos;
+            if (slSize) slSize.value = targetPhysics.size;
+        };
+
+        function recalculateMatrix(overrideMode = false) {
+            const activeTerps = TERPENES.filter(t => state.matrix[t.id]);
+            
+            // Failsafe: if user unchecks all, force Full Spectrum
+            if (activeTerps.length === 0) {
+                TERPENES.forEach(t => state.matrix[t.id] = true);
+                recalculateMatrix();
+                return;
+            }
+
+            // Sync Buttons UI
+            if (gridEl) {
+                const buttons = gridEl.children;
+                TERPENES.forEach((t, i) => {
+                    if (buttons[i]) {
+                        if(state.matrix[t.id]) buttons[i].classList.add('active');
+                        else buttons[i].classList.remove('active');
+                    }
+                });
+            }
+
+            const count = activeTerps.length;
+
+            if(!overrideMode) {
+                let avgSpeed = 0, avgSpin = 0, avgWave = 0, avgChaos = 0, avgSize = 0;
+                activeTerps.forEach(t => {
+                    avgSpeed += t.speed;
+                    avgSpin += t.spin;
+                    avgWave += t.wave;
+                    avgChaos += t.chaos;
+                    avgSize += t.size;
+                });
+                
+                targetPhysics.speed = avgSpeed / count;
+                targetPhysics.spin = avgSpin / count;
+                targetPhysics.wave = avgWave / count;
+                targetPhysics.chaos = avgChaos / count;
+                targetPhysics.size = avgSize / count;
+                
+                updateSliderDisplay();
+            }
+
+            // Recolor Particles efficiently
+            const colorArray = geometry.attributes.color.array;
+            for (let i = 0; i < PARTICLE_COUNT; i++) {
+                const randomActiveTerp = activeTerps[Math.floor(Math.random() * count)];
+                const c = new THREE.Color(randomActiveTerp.hex);
+                
+                const hsl = { h: 0, s: 0, l: 0 };
+                c.getHSL(hsl);
+                c.setHSL(hsl.h, hsl.s, hsl.l * (0.6 + Math.random() * 0.4));
+
+                colorArray[i * 3] = c.r;
+                colorArray[i * 3 + 1] = c.g;
+                colorArray[i * 3 + 2] = c.b;
+            }
+            geometry.attributes.color.needsUpdate = true;
+
+            // Update Global Theme
+            if (vibeReadout) {
+                if(overrideMode) {
+                    vibeReadout.innerText = "CUSTOM OVERRIDE";
+                } else if (count === 8) {
+                    vibeReadout.innerText = "FULL SPECTRUM (BALANCE)";
+                    rootVars.setProperty('--accent-color', '#22c55e'); // Default Green
+                } else if (count === 1) {
+                    vibeReadout.innerText = activeTerps[0].text;
+                    rootVars.setProperty('--accent-color', activeTerps[0].hex);
+                } else {
+                    vibeReadout.innerText = `TERP-MATRIX: ${count} STRAIN BLEND`;
+                    rootVars.setProperty('--accent-color', activeTerps[0].hex); 
+                }
+            }
+
+            // Sync Header UI color
+            const hudToggleIcon = document.getElementById('hud-toggle-icon');
+            if(hudToggleIcon) hudToggleIcon.style.color = 'var(--accent-color)';
+        }
+
+        // Action Buttons
+        const btnRnd = document.getElementById('btn-rnd');
+        if (btnRnd) {
+            btnRnd.onclick = () => {
+                TERPENES.forEach(t => state.matrix[t.id] = Math.random() > 0.5);
+                recalculateMatrix();
+            };
+        }
+        
+        const btnFull = document.getElementById('btn-full');
+        if (btnFull) {
+            btnFull.onclick = () => {
+                TERPENES.forEach(t => state.matrix[t.id] = true);
+                recalculateMatrix();
+            };
+        }
+
+        // Slider Listeners (Manual Overrides)
+        const setupSlider = (id, prop) => {
+            const el = document.getElementById('sl-' + id);
+            if (el) {
+                el.addEventListener('input', (e) => {
+                    targetPhysics[prop] = parseFloat(e.target.value);
+                    const valEl = document.getElementById('val-' + id);
+                    if (valEl) {
+                        valEl.innerText = targetPhysics[prop].toFixed(id==='wave'||id==='chaos'||id==='size'?1:2);
+                    }
+                    recalculateMatrix(true); // pass true for override mode
+                });
+            }
+        };
+        setupSlider('speed', 'speed');
+        setupSlider('spin', 'spin');
+        setupSlider('wave', 'wave');
+        setupSlider('chaos', 'chaos');
+        setupSlider('size', 'size');
+
+        // Initial Boot
+        recalculateMatrix();
+        uniforms.uSpin.value = targetPhysics.spin;
+        uniforms.uWave.value = targetPhysics.wave;
+        uniforms.uChaos.value = targetPhysics.chaos;
+        uniforms.uSize.value = targetPhysics.size;
+
+        // --- 5. RENDER LOOP (100% BULLETPROOF FLUID FIX) ---
+        let internalTime = 0;
+        let lastTime = performance.now();
+        let fpsTime = performance.now();
+        let frames = 0;
+        const fpsCounter = document.getElementById('fps-counter');
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const now = performance.now();
+            // CÁLCULO SEGURO DEL DELTA TIME (Evita NaN o saltos drásticos)
+            const delta = Math.max(0, Math.min((now - lastTime) / 1000, 0.1)) || 0.016; 
+            lastTime = now;
+            
+            frames++;
+            // BLOQUE BLINDADO: Null checks para evitar colapso exacto al segundo 1
+            if (now > fpsTime + 1000) {
+                if (fpsCounter) {
+                    fpsCounter.innerText = `${frames} FPS`;
+                }
+                frames = 0;
+                fpsTime = now;
+            }
+
+            internalTime += delta * targetPhysics.speed;
+            uniforms.uTime.value = internalTime;
+            
+            uniforms.uSpin.value += (targetPhysics.spin - uniforms.uSpin.value) * 0.02;
+            uniforms.uWave.value += (targetPhysics.wave - uniforms.uWave.value) * 0.02;
+            uniforms.uChaos.value += (targetPhysics.chaos - uniforms.uChaos.value) * 0.02;
+            uniforms.uSize.value += (targetPhysics.size - uniforms.uSize.value) * 0.02;
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // IGNITION
+        animate();
+    </script>
 </body>
 </html>
